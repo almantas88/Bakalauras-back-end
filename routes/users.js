@@ -21,21 +21,29 @@ router.post("/register", async (req, res) => {
       !grade
     ) {
       console.log(email, password, passwordCheck, firstName, lastName, cardID);
-      return res.status(400).json({ msg: "Not all fields have been entered." });
+      return res.status(400).json({ msg: "Ne visi laukai buvo užpildyti." });
     }
     if (password.length < 5)
       return res
         .status(400)
-        .json({ msg: "The password needs to be at least 5 characters long." });
+        .json({ msg: "Slaptažodis turi būti bent 5 raidžių ilgio." });
     if (password !== passwordCheck)
       return res
         .status(400)
-        .json({ msg: "Enter the same password twice for verification." });
+        .json({ msg: "Slaptažodžiai nesutampa." });
+
+    const existingCardID = await User.findOne({ cardID: cardID });
+    if (existingCardID)
+      return res
+        .status(400)
+        .json({ msg: "Vartotojas su tokiu kortelės ID jau egzistuoja." });
+
     const existingUser = await User.findOne({ email: email });
     if (existingUser)
       return res
         .status(400)
-        .json({ msg: "An account with this email already exists." });
+        .json({ msg: "Vartotojas su tokiu el. paštu jau egzistuoja." });
+
     const salt = await bcrypt.genSalt();
     const passwordHash = await bcrypt.hash(password, salt);
     const newUser = new User({
@@ -47,8 +55,9 @@ router.post("/register", async (req, res) => {
       grade,
     });
     const savedUser = await newUser.save();
-    res.status(200).json({ msg: "An account was created." });
+    res.status(200).json({ msg: "Vartotojas sukurtas!" });
   } catch (err) {
+    console.log(err);
     res.status(500).json({ msg: err.message });
   }
 });
@@ -60,14 +69,14 @@ router.post("/login", async (req, res) => {
     const { email, password } = req.body;
     // validate
     if (!email || !password)
-      return res.status(400).send({ msg: "Not all fields have been entered." });
+      return res.status(400).send({ msg: "Ne visi laukai buvo užpildyti." });
     const user = await User.findOne({ email: email });
     if (!user)
       return res
         .status(400)
-        .send({ msg: "No account with this email has been registered." });
+        .send({ msg: "Nėra tokio vartotojo su tokiu el. paštu." });
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).send({ msg: "Invalid credentials." });
+    if (!isMatch) return res.status(400).send({ msg: "Netinkami prisijungimo duomenys." });
     const token = jwt.sign(
       {
         id: user._id,
@@ -128,9 +137,11 @@ router.get("/", auth, async (req, res) => {
   });
 });
 
-router.get("/allUsers",auth, async (req, res) => {
+router.get("/allUsers", auth, async (req, res) => {
   try {
-    const allUsers = await User.find({ role: { $ne: "ADMIN" } }).sort({grade: 'asc'});
+    const allUsers = await User.find({ role: { $ne: "ADMIN" } }).sort({
+      grade: "asc",
+    });
     console.log(allUsers);
     res.status(200).send({
       users: allUsers,

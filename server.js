@@ -8,6 +8,7 @@ app.use(express.json());
 app.use(cors());
 require("dotenv").config();
 
+
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.DB_URL, {
