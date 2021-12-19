@@ -8,8 +8,16 @@ const User = require("../models/user.model");
 // Register
 router.post("/register", async (req, res) => {
   try {
-    let { email, password, passwordCheck, firstName, lastName, cardID, grade } =
-      req.body;
+    let {
+      email,
+      password,
+      passwordCheck,
+      firstName,
+      lastName,
+      cardID,
+      grade,
+      role,
+    } = req.body;
     // validate
     if (
       !email ||
@@ -28,9 +36,7 @@ router.post("/register", async (req, res) => {
         .status(400)
         .json({ msg: "Slaptažodis turi būti bent 5 raidžių ilgio." });
     if (password !== passwordCheck)
-      return res
-        .status(400)
-        .json({ msg: "Slaptažodžiai nesutampa." });
+      return res.status(400).json({ msg: "Slaptažodžiai nesutampa." });
 
     const existingCardID = await User.findOne({ cardID: cardID });
     if (existingCardID)
@@ -53,6 +59,7 @@ router.post("/register", async (req, res) => {
       lastName,
       cardID,
       grade,
+      role,
     });
     const savedUser = await newUser.save();
     res.status(200).json({ msg: "Vartotojas sukurtas!" });
@@ -76,7 +83,8 @@ router.post("/login", async (req, res) => {
         .status(400)
         .send({ msg: "Nėra tokio vartotojo su tokiu el. paštu." });
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).send({ msg: "Netinkami prisijungimo duomenys." });
+    if (!isMatch)
+      return res.status(400).send({ msg: "Netinkami prisijungimo duomenys." });
     const token = jwt.sign(
       {
         id: user._id,
@@ -106,12 +114,21 @@ router.post("/login", async (req, res) => {
 });
 
 // Delete
-router.delete("/delete", auth, async (req, res) => {
+// cia butinai reiks dar patikrinti ar dar neliko pas ji knygu, jeiguy dar turi kad neleistu istrinti
+router.delete("/deleteUser", auth, async (req, res) => {
   try {
-    const deletedUser = await User.findByIdAndDelete(req.user);
-    res.json(deletedUser);
+    console.log(req.body.cardID);
+    const existingCard = await User.findOne({ cardID: req.body.cardID });
+    if (!existingCard)
+      return res
+        .status(400)
+        .json({ msg: "Nera tokio vaiko su tokia kortelės ID." });
+
+    const deletedUser = await User.deleteOne({ cardID: req.body.cardID });
+    console.log(deletedUser);
+    res.json({ msg: "Vartotojas sėkmingai ištrintas!" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ msg: err.message });
   }
 });
 
@@ -143,11 +160,24 @@ router.get("/allUsers", auth, async (req, res) => {
       grade: "asc",
     });
     console.log(allUsers);
-    res.status(200).send({
+    return res.status(200).send({
       users: allUsers,
     });
   } catch (error) {
-    res.status(500).json({ msg: err.message });
+    return res.status(500).json({ msg: error.message });
+  }
+});
+
+router.post("/oneUser", async (req, res) => {
+  try {
+    const foundUser = await User.findOne({ cardID: req.body.cardID });
+    if (!foundUser)
+      return res.status(400).send({ msg: "Vartotojas neegzistuoja" });
+    return res.status(200).send({
+      user: foundUser,
+    });
+  } catch (error) {
+    return res.status(500).json({ msg: error.message });
   }
 });
 
