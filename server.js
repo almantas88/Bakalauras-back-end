@@ -2,9 +2,11 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const seed = require('./seed');
+const seedbook = require('./seedBooks');
 
 app = express();
 app.use(express.json());
+
 app.use(cors());
 require("dotenv").config();
 
@@ -24,7 +26,9 @@ const connectDB = async () => {
 
 connectDB();
 //seed(1000);
+//seedbook(1000);
 app.use("/users", require("./routes/users"));
+app.use("/books", require("./routes/books"));
 
 app.listen(process.env.PORT || 5000, () => {
   console.log(`back-end server is running on port ${process.env.PORT}`);

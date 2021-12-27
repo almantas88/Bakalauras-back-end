@@ -2,69 +2,31 @@ const router = require("express").Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const auth = require("../middleware/auth");
-const User = require("../models/user.model");
+const Book = require("../models/book.model");
 
-//Mokiniu registracija, veliau reiktu gal padaryti ir admino registracija, bet kaip atskira route.
-// Register
-router.post("/register", auth, async (req, res) => {
+router.post("/newBook", auth, async (req, res) => {
+    console.log(req.body);
   try {
-    let {
-      email,
-      password,
-      passwordCheck,
-      firstName,
-      lastName,
-      cardID,
-      grade,
-      role,
-    } = req.body;
-    // validate
-    if (
-      !email ||
-      !password ||
-      !passwordCheck ||
-      !firstName ||
-      !lastName ||
-      !cardID ||
-      !grade
-    ) {
-      console.log(email, password, passwordCheck, firstName, lastName, cardID);
+    let { title, author, description, bookID } = req.body;
+    if (!title || !author || !bookID) {
       return res.status(400).json({ msg: "Ne visi laukai buvo užpildyti." });
     }
-    if (password.length < 5)
+
+    const existingBookID = await Book.findOne({ bookID: bookID });
+    if (existingBookID)
       return res
         .status(400)
-        .json({ msg: "Slaptažodis turi būti bent 5 raidžių ilgio." });
-    if (password !== passwordCheck)
-      return res.status(400).json({ msg: "Slaptažodžiai nesutampa." });
+        .json({ msg: "Knyga su tokia knygos ID jau egzistuoja." });
 
-    const existingCardID = await User.findOne({ cardID: cardID });
-    if (existingCardID)
-      return res
-        .status(400)
-        .json({ msg: "Vartotojas su tokiu kortelės ID jau egzistuoja." });
-
-    const existingUser = await User.findOne({ email: email });
-    if (existingUser)
-      return res
-        .status(400)
-        .json({ msg: "Vartotojas su tokiu el. paštu jau egzistuoja." });
-
-    const salt = await bcrypt.genSalt();
-    const passwordHash = await bcrypt.hash(password, salt);
-    const newUser = new User({
-      email,
-      password: passwordHash,
-      firstName,
-      lastName,
-      cardID,
-      grade,
-      role,
+    const newBook = new Book({
+      title,
+      author,
+      description,
+      bookID,
     });
-    const savedUser = await newUser.save();
-    res.status(200).json({ msg: "Vartotojas sukurtas!" });
+    const savedBook = await newBook.save();
+    res.status(200).json({ msg: "Knyga sukurta!" });
   } catch (err) {
-    console.log(err);
     res.status(500).json({ msg: err.message });
   }
 });
@@ -115,52 +77,28 @@ router.post("/login", async (req, res) => {
 
 // Delete
 // cia butinai reiks dar patikrinti ar dar neliko pas ji knygu, jeiguy dar turi kad neleistu istrinti
-router.delete("/deleteUser", auth, async (req, res) => {
+router.delete("/deleteBook", auth, async (req, res) => {
   try {
-    console.log(req.body);
-    const existingCard = await User.findOne({ cardID: req.body.cardID });
-    if (!existingCard)
+    const existingBook = await Book.findOne({ bookID: req.body.bookID });
+    if (!existingBook)
       return res
         .status(400)
-        .json({ msg: "Nera tokio vaiko su tokia kortelės ID." });
+        .json({ msg: "Nera tokios knygos su tokia knygos ID." });
 
-    const deletedUser = await User.deleteOne({ cardID: req.body.cardID });
-    console.log(deletedUser);
-    res.json({ msg: "Vartotojas sėkmingai ištrintas!" });
+    const deletedBook = await Book.deleteOne({ bookID: req.body.bookID });
+    res.json({ msg: "Knyga sėkmingai ištrinta!" });
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }
 });
 
-// Check if token is valid
-router.post("/tokenIsValid", async (req, res) => {
+router.get("/allBooks", auth, async (req, res) => {
   try {
-    const token = req.header("x-auth-token");
-    if (!token) return res.json(false);
-    const verified = jwt.verify(token, process.env.JWT_SECRET);
-    if (!verified) return res.json(false);
-    const user = await User.findById(verified.id);
-    if (!user) return res.json(false);
-    return res.json(true);
-  } catch (err) {
-    res.status(500).json({ msg: err.message });
-  }
-});
-
-router.get("/", auth, async (req, res) => {
-  const user = await User.findById(req.user);
-  res.json({
-    id: user._id,
-  });
-});
-
-router.get("/allUsers", auth, async (req, res) => {
-  try {
-    const allUsers = await User.find({ role: { $ne: "ADMIN" } }).sort({
-      grade: "asc",
+    const allBooks = await Book.find().sort({
+      title: "asc",
     });
     return res.status(200).send({
-      users: allUsers,
+      books: allBooks,
     });
   } catch (error) {
     return res.status(500).json({ msg: error.message });
