@@ -105,61 +105,46 @@ router.get("/allBooks", auth, async (req, res) => {
   }
 });
 
-router.post("/oneUser", auth, async (req, res) => {
+router.post("/oneBook", auth, async (req, res) => {
   try {
-    const foundUser = await User.findOne({ cardID: req.body.cardID });
-    if (!foundUser)
-      return res.status(400).send({ msg: "Vartotojas neegzistuoja" });
+    const foundBook = await Book.findOne({ bookID: req.body.bookID });
+    if (!foundBook)
+      return res.status(400).send({ msg: "Knyga neegzistuoja!" });
     return res.status(200).send({
-      user: foundUser,
+      book: foundBook,
     });
   } catch (error) {
     return res.status(500).json({ msg: error.message });
   }
 });
 
-router.put("/updateUser", auth, async (req, res) => {
+router.put("/updateBook", auth, async (req, res) => {
   try {
     console.log(req.body);
-    let { email, firstName, lastName, cardID, grade, password, passwordCheck } =
+    let { bookID, title, author, description } =
       req.body;
 
-    if (!email || !firstName || !lastName || !cardID || !grade) {
+    if (!bookID || !title || !author) {
       return res.status(400).json({ msg: "Ne visi laukai buvo užpildyti." });
     }
-    const foundUser = await User.findOne({ cardID: req.body.cardID });
-    if (!foundUser)
-      return res.status(400).send({ msg: "Vartotojas neegzistuoja" });
+    const foundBook = await Book.findOne({ bookID: req.body.bookID });
+    if (!foundBook)
+      return res.status(400).send({ msg: "Knyga neegzistuoja" });
 
-    const newUserInfo = {
-      email,
-      firstName,
-      lastName,
-      cardID,
-      grade,
+    const newBookInfo = {
+      bookID,
+      title,
+      author,
+      description
     };
 
-    if (password && passwordCheck) {
-      if (password !== passwordCheck) {
-        return res.status(400).json({ msg: "Slaptažodžiai nesutampa." });
-      }
-      if (password.length < 5)
-        return res
-          .status(400)
-          .json({ msg: "Slaptažodis turi būti bent 5 raidžių ilgio." });
-
-      const salt = await bcrypt.genSalt();
-      const passwordHash = await bcrypt.hash(password, salt);
-      newUserInfo.password = passwordHash;
-    }
-
-    const updatedUser = await User.findOneAndUpdate(
-      { cardID: req.body.cardID },
-      newUserInfo
+    const updatedBook = await Book.findOneAndUpdate(
+      { bookID: req.body.bookID },
+      newBookInfo
     );
 
     return res.status(200).json({
-      user: updatedUser,
+      book: updatedBook,
     });
   } catch (error) {
     return res.status(500).json({ msg: error.message });
